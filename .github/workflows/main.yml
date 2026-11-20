@@ -1,0 +1,50 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Assemble debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract SudhaAutoBot_Upgraded.zip
+        shell: bash
+        run: |
+          rm -rf build_src && mkdir -p build_src
+          unzip -o SudhaAutoBot_Upgraded.zip -d build_src
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Self-tests
+        shell: bash
+        working-directory: build_src/SudhaAutoBot_Upgraded
+        run: bash tools/selftest/run.sh
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Assemble debug
+        shell: bash
+        working-directory: build_src/SudhaAutoBot_Upgraded
+        run: gradle --no-daemon assembleDebug --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SudhaAutoBot-debug
+          path: build_src/SudhaAutoBot_Upgraded/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
